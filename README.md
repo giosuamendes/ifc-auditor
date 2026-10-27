@@ -62,13 +62,33 @@ Each rule has a `severity` (critical | major | minor):
 - **major** — requires remediation before construction
 - **minor** — documented as RFI-track items
 
+### Prefab readiness ruleset
+
+`rulesets/prefab_readiness.yaml` answers a different question: *is this model good enough to run a prefabrication analysis on?* Prefab matching compares elements and their quantities against supplier catalogues, which only works if elements carry a semantic class, a material and usable base quantities.
+
+| Rule | Severity | What it validates |
+|---|---|---|
+| `proxy_ratio` | critical | `IfcBuildingElementProxy` stays below 5% of building elements |
+| `wall_volume` / `slab_volume` | critical | `Qto_*BaseQuantities.NetVolume` exists and is > 0 |
+| `column_volume` | major | Same for columns |
+| `wall_material` / `slab_material` | major | Material assignment present |
+| `wall_loadbearing` | major | `Pset_WallCommon.LoadBearing` declared |
+| `spatial_orphans` | major | Prefab-relevant elements assigned to a storey |
+
+```bash
+python audit.py examples/sample.ifc --rules rulesets/prefab_readiness.yaml
+# ▸ 3/8 rules passed (38%) · Critical failures: 2 → exit 1
+```
+
+The synthetic sample has no base quantities, so it fails the volume rules: exactly the kind of export that would break a downstream prefab check. See [`examples/prefab_readiness_report.html`](examples/prefab_readiness_report.html).
+
 ---
 
 ## Run it in 60 seconds
 
 ```bash
 # Clone
-git clone https://github.com/architect-josuemendes/ifc-auditor.git
+git clone https://github.com/giosuamendes/ifc-auditor.git
 cd ifc-auditor
 
 # Install dependencies
@@ -109,14 +129,17 @@ Exit code is `0` if all *critical* rules pass, `1` otherwise. Perfect for CI/CD 
 ├── README.md                       # this file
 ├── LICENSE                         # MIT
 ├── requirements.txt                # ifcopenshell, click, jinja2, pyyaml, pydantic
-├── audit.py                        # main CLI tool (~370 lines)
+├── audit.py                        # main CLI tool (~420 lines)
 ├── generate_sample.py              # synthetic IFC generator (~180 lines)
-├── rules.yaml                      # example rules configuration
+├── rules.yaml                      # example BEP/EIR rules configuration
+├── rulesets/
+│   └── prefab_readiness.yaml       # prefab-readiness ruleset
 ├── templates/
 │   └── report.html.j2              # Jinja2 HTML report template
 └── examples/
     ├── sample.ifc                  # synthetic test IFC (16 KB)
-    └── sample_report.html          # sample audit report output
+    ├── sample_report.html          # sample audit report output
+    └── prefab_readiness_report.html # prefab-readiness report output
 ```
 
 ---
@@ -145,6 +168,8 @@ Supported `check.type` values:
 - `material_required` — verify material assignment is present
 - `spatial_orphans` — find elements not assigned to a spatial structure
 - `unique_guids` — find duplicate GlobalIds
+- `quantity_required` — verify a positive quantity exists in a `Qto_*` set (e.g. `NetVolume`)
+- `proxy_ratio` — verify generic `IfcBuildingElementProxy` elements stay below a maximum share
 
 To add a new check type, write a function in `audit.py` (~15 lines) and register it in the `CHECKS` dict.
 
@@ -182,8 +207,7 @@ jobs:
 **Josue Mendes** — Diplom-Architekt · BIM Lead · Munich
 Specializing in BIM coordination, AEC data analytics, and federated digital twin systems.
 
-- Portfolio: [josuemendes.vercel.app](https://josuemendes.vercel.app)
-- Related: [bim-clash-analytics-caracas](https://github.com/architect-josuemendes/bim-clash-analytics-caracas) — data-driven coordination case study (340 → 20 clashes)
+- Portfolio: [josuemendes.de](https://josuemendes.de)
 - Research (SILVIA federated Digital Twin): [zenodo.org/records/19616669](https://zenodo.org/records/19616669)
 - Email: josuemendesv@gmail.com
 

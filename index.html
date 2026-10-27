@@ -450,10 +450,10 @@
 <body>
 
 <nav class="top">
-  <a href="https://josuemendes.vercel.app" class="brand">Josue Mendes</a>
+  <a href="https://josuemendes.de" class="brand">Josue Mendes</a>
   <div>
-    <a href="https://josuemendes.vercel.app/work">Work</a>&nbsp;&nbsp;·&nbsp;&nbsp;
-    <a href="https://josuemendes.vercel.app/about">About</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://josuemendes.de/work">Work</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://josuemendes.de/about">About</a>&nbsp;&nbsp;·&nbsp;&nbsp;
     <a href="mailto:josuemendesv@gmail.com">Contact</a>
   </div>
 </nav>
@@ -615,7 +615,7 @@
     <div class="narrow" style="margin-top:0;">
       <div class="chart-caption">
         <span class="voice">Design note</span>
-        <p>Severity follows the same logic as coordination BCFs: critical blocks acceptance, major blocks construction sign-off, minor is RFI-tracked. The same three-tier model used across the ROCKOs coordination workflow.</p>
+        <p>Severity follows the same logic as coordination BCFs: critical blocks acceptance, major blocks construction sign-off, minor is RFI-tracked.</p>
       </div>
     </div>
   </section>
@@ -631,7 +631,7 @@
     <div class="wide">
       <div class="cli-block">
         <pre><span class="comment"># Clone and install</span>
-<span class="prompt">$</span> <span class="cmd">git clone https://github.com/architect-josuemendes/ifc-auditor.git &amp;&amp; cd ifc-auditor</span>
+<span class="prompt">$</span> <span class="cmd">git clone https://github.com/giosuamendes/ifc-auditor.git &amp;&amp; cd ifc-auditor</span>
 <span class="prompt">$</span> <span class="cmd">pip install -r requirements.txt</span>
 
 <span class="comment"># Generate the synthetic test IFC (30 walls, 12 doors, intentional defects)</span>
@@ -784,22 +784,22 @@
     </div>
   </section>
 
-  <!-- ===================== RELATIONSHIP TO CS1 ===================== -->
+  <!-- ===================== PREFAB READINESS ===================== -->
   <section>
     <div class="narrow">
-      <span class="section-label">07 · Context</span>
-      <h2>The missing <em>upstream gate</em> for CS1.</h2>
+      <span class="section-label">07 · Extension</span>
+      <h2>Same engine, <em>different question</em>.</h2>
       <p>
-        The ROCKOs Caracas coordination project started with 340 critical clashes detected at first federation. A significant share of those clashes were traceable to upstream data quality issues: elements missing property assignments, orphaned geometry, inconsistent naming that broke automated clash filters.
+        Because rules live in YAML, a new ruleset is a new use case. <code style="font-family:var(--mono);font-size:15px;background:var(--bg-soft);padding:2px 6px;">rulesets/prefab_readiness.yaml</code> asks whether a model is good enough to run a prefabrication analysis on.
       </p>
       <p>
-        IFC Auditor is the tool that should have run on every consultant delivery <em>before</em> federation. The 94% clash reduction achieved over 10 weeks was coordination work — but some of it was avoidable with a pre-acceptance gate. This tool closes that loop.
+        Prefab matching compares building elements and their volumes against supplier catalogues. That fails silently when elements are exported as generic proxies, lack a material, or carry no base quantities. Two new check types cover the gap: <strong>quantity_required</strong> verifies that <code style="font-family:var(--mono);font-size:15px;background:var(--bg-soft);padding:2px 6px;">Qto_*BaseQuantities.NetVolume</code> exists and is positive, and <strong>proxy_ratio</strong> flags models where too many elements are <code style="font-family:var(--mono);font-size:15px;background:var(--bg-soft);padding:2px 6px;">IfcBuildingElementProxy</code>.
       </p>
       <p>
-        Both tools are now part of the same open-source coordination toolkit: <strong>ifc-auditor</strong> validates deliverables upstream; <strong>bim-clash-analytics</strong> tracks and resolves what slips through.
+        On the synthetic sample, the prefab ruleset scores 3/8 with two critical failures: no wall or slab carries a usable volume. The model passes the BEP audit's critical gate, yet would break any downstream prefab check.
       </p>
       <p style="margin-top: 24px;">
-        <a href="https://rockos-caracas.vercel.app" style="font-family:var(--mono);font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft);">CS1 — ROCKOs Caracas: 340 → 20 clashes ↗</a>
+        <a href="https://github.com/giosuamendes/ifc-auditor/blob/main/rulesets/prefab_readiness.yaml" style="font-family:var(--mono);font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft);">View the prefab ruleset ↗</a>
       </p>
     </div>
   </section>
@@ -812,16 +812,16 @@
     <h2>Use it on your next IFC delivery.</h2>
     <p>Open-source, MIT license. Clone, adapt your <code style="font-family:var(--mono);font-size:14px;background:rgba(255,255,255,0.08);padding:2px 6px;">rules.yaml</code> to your BEP, and run it before the model reaches the CDE.</p>
     <div class="btn-group">
-      <a href="https://github.com/architect-josuemendes/ifc-auditor" target="_blank">GitHub Repository ↗</a>
+      <a href="https://github.com/giosuamendes/ifc-auditor" target="_blank">GitHub Repository ↗</a>
       <a href="mailto:josuemendesv@gmail.com" class="secondary">Discuss a Project</a>
     </div>
   </div>
 </div>
 
 <footer>
-  <a href="https://josuemendes.vercel.app">josuemendes.vercel.app</a>
+  <a href="https://josuemendes.de">josuemendes.de</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/architect-josuemendes/ifc-auditor">architect-josuemendes/ifc-auditor</a>
+  <a href="https://github.com/giosuamendes/ifc-auditor">giosuamendes/ifc-auditor</a>
   &nbsp;·&nbsp;
   MIT License
 </footer>

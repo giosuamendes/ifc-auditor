@@ -1,0 +1,86 @@
+# ============================================================
+# PREFAB READINESS — example ruleset
+# ============================================================
+# Is this model good enough to run a prefabrication analysis on?
+#
+# Prefab matching tools compare building elements and their quantities
+# against supplier product catalogues. That only works if elements carry
+# a semantic IFC class, a material, and usable base quantities.
+#
+# Run it:
+#   python audit.py model.ifc --rules rulesets/prefab_readiness.yaml
+# ============================================================
+
+project_info:
+  name: "Prefab Readiness Check"
+  bep_reference: "Prefab data requirements v0.1"
+  ifc_schemas_allowed: [IFC4, IFC4X3]
+
+rules:
+
+  # --- Can the elements be classified at all? ---
+  - id: proxy_ratio
+    name: "Generic proxies stay below 5% of building elements"
+    severity: critical
+    check:
+      type: proxy_ratio
+      max_ratio: 0.05
+
+  - id: spatial_orphans
+    name: "All prefab-relevant elements are assigned to a storey"
+    severity: major
+    check:
+      type: spatial_orphans
+      element_classes: [IfcWall, IfcSlab, IfcColumn, IfcBeam]
+
+  # --- Can the elements be matched to a product? ---
+  - id: wall_material
+    name: "All walls have material assignment"
+    severity: major
+    check:
+      type: material_required
+      ifc_class: IfcWall
+
+  - id: slab_material
+    name: "All slabs have material assignment"
+    severity: major
+    check:
+      type: material_required
+      ifc_class: IfcSlab
+
+  - id: wall_loadbearing
+    name: "All walls declare Pset_WallCommon.LoadBearing"
+    severity: major
+    check:
+      type: property_required
+      ifc_class: IfcWall
+      pset: Pset_WallCommon
+      property: LoadBearing
+
+  # --- Can the elements be sized and costed? ---
+  - id: wall_volume
+    name: "All walls have Qto_WallBaseQuantities.NetVolume > 0"
+    severity: critical
+    check:
+      type: quantity_required
+      ifc_class: IfcWall
+      qto: Qto_WallBaseQuantities
+      quantity: NetVolume
+
+  - id: slab_volume
+    name: "All slabs have Qto_SlabBaseQuantities.NetVolume > 0"
+    severity: critical
+    check:
+      type: quantity_required
+      ifc_class: IfcSlab
+      qto: Qto_SlabBaseQuantities
+      quantity: NetVolume
+
+  - id: column_volume
+    name: "All columns have Qto_ColumnBaseQuantities.NetVolume > 0"
+    severity: major
+    check:
+      type: quantity_required
+      ifc_class: IfcColumn
+      qto: Qto_ColumnBaseQuantities
+      quantity: NetVolume

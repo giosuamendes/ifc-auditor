@@ -222,6 +222,70 @@ def check_unique_guids(model, params: dict) -> CheckResult:
     )
 
 
+def check_quantity_required(model, params: dict) -> CheckResult:
+    """Check that all elements of a class carry a positive quantity in a Qto set.
+
+    Prefab matching works on element volumes and areas, so a missing or zero
+    quantity makes the element invisible to any downstream prefab analysis.
+    """
+    ifc_class = params["ifc_class"]
+    qto_name = params["qto"]
+    quantity_name = params["quantity"]
+    elements = model.by_type(ifc_class)
+    total = len(elements)
+    if total == 0:
+        return _result("warn", 0, 0, 0, f"No {ifc_class} elements found")
+
+    failing = []
+    for el in elements:
+        qtos = ifcopenshell.util.element.get_psets(el, qtos_only=True) or {}
+        value = qtos.get(qto_name, {}).get(quantity_name)
+        if isinstance(value, (int, float)) and value > 0:
+            continue
+        reason = (f"Missing {qto_name}.{quantity_name}" if value is None
+                  else f"{qto_name}.{quantity_name} = {value} (must be > 0)")
+        failing.append({"id": el.GlobalId,
+                        "name": el.Name or "<unnamed>",
+                        "reason": reason})
+
+    passed = total - len(failing)
+    if not failing:
+        return _result("pass", total, total, 0,
+                       f"All {total} {ifc_class}s have {qto_name}.{quantity_name}")
+    return _result(
+        "fail", total, passed, len(failing),
+        f"{len(failing)}/{total} {ifc_class}s missing usable {qto_name}.{quantity_name}",
+        failing[:50]
+    )
+
+
+def check_proxy_ratio(model, params: dict) -> CheckResult:
+    """Check that generic proxy elements stay below a maximum share of the model.
+
+    IfcBuildingElementProxy carries no semantic class, so it cannot be matched
+    to a prefab product type. A high proxy share signals a poor IFC export.
+    """
+    max_ratio = float(params.get("max_ratio", 0.05))
+    # IFC4 uses IfcBuildingElement; IFC4X3 renamed it to IfcBuiltElement
+    base_class = "IfcBuiltElement" if model.schema == "IFC4X3" else "IfcBuildingElement"
+    elements = model.by_type(base_class)
+    total = len(elements)
+    if total == 0:
+        return _result("warn", 0, 0, 0, f"No {base_class} elements found")
+
+    proxies = [el for el in elements if el.is_a("IfcBuildingElementProxy")]
+    ratio = len(proxies) / total
+    summary = (f"{len(proxies)}/{total} elements are proxies "
+               f"({ratio:.0%}, max allowed {max_ratio:.0%})")
+    if ratio <= max_ratio:
+        return _result("pass", total, total - len(proxies), len(proxies), summary)
+    return _result(
+        "fail", total, total - len(proxies), len(proxies), summary,
+        [{"id": el.GlobalId, "name": el.Name or "<unnamed>",
+          "reason": "Generic proxy, no semantic IFC class"} for el in proxies[:50]]
+    )
+
+
 # Helper
 def _result(status, total, passed, failed, message, failing=None):
     return {
@@ -244,6 +308,8 @@ CHECKS = {
     "material_required": check_material_required,
     "spatial_orphans":   check_spatial_orphans,
     "unique_guids":      check_unique_guids,
+    "quantity_required": check_quantity_required,
+    "proxy_ratio":       check_proxy_ratio,
 }
 
 
