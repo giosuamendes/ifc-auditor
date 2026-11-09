@@ -1,0 +1,51 @@
+# ============================================================
+# FM GEO-BIM QUALITY GATE — draft for the Munich Airport pilot
+# ============================================================
+# Question this ruleset answers: may this IFC delivery enter the
+# geo and building twin used by facility management?
+#
+#   - georef:  the model sits in map coordinates (EPSG:25832), so it
+#              lines up with GIS footprints and terrain
+#   - ids:     the FM delivery requirements, written as a buildingSMART
+#              IDS file and checked with IfcTester
+#   - integrity checks the twin relies on (GlobalIds link IFC to CityGML)
+#
+# The IDS is a draft: FMG_Identification.RaumID is a placeholder until
+# the airport confirms its VisMan ID scheme.
+# ============================================================
+
+project_info:
+  name: "FM geo-BIM quality gate (MUC pilot, draft)"
+  bep_reference: "FM IDS draft v0.1"
+  ifc_schemas_allowed: [IFC4, IFC4X3]
+
+rules:
+
+  - id: schema_version
+    name: "IFC schema is IFC4 or IFC4X3 (IFC2X3 cannot store map conversion)"
+    severity: critical
+    check:
+      type: schema
+      allowed: [IFC4, IFC4X3]
+
+  - id: georef
+    name: "Model is georeferenced in ETRS89 / UTM 32N"
+    severity: critical
+    check:
+      type: georef
+      allowed_crs: ["EPSG:25832"]
+      # Rough envelope around Munich and its airport (UTM 32N, metres)
+      bounds: {e_min: 660000, e_max: 740000, n_min: 5310000, n_max: 5390000}
+
+  - id: unique_guids
+    name: "All GlobalIds are unique (they link IFC elements to the CityGML rooms)"
+    severity: critical
+    check:
+      type: unique_guids
+
+  - id: fm_ids
+    name: "FM IDS"
+    severity: major
+    check:
+      type: ids
+      file: ids/fm_muc_draft.ids

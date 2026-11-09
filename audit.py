@@ -286,6 +286,127 @@ def check_proxy_ratio(model, params: dict) -> CheckResult:
     )
 
 
+def check_georef(model, params: dict) -> CheckResult:
+    """Check that the model is georeferenced in an approved projected CRS.
+
+    GIS integration needs map coordinates, not a local origin. The check reports
+    a simplified Level of Georeferencing (LoGeoRef, Clemen & Görne 2019):
+      - 0   no georeferencing found
+      - 20  only IfcSite.RefLatitude / RefLongitude (geographic, imprecise)
+      - 50  IfcMapConversion to an IfcProjectedCRS (what GIS needs)
+    The rule passes only at LoGeoRef 50 with an allowed CRS and, if `bounds`
+    are given, a map origin inside them.
+
+    Params:
+        allowed_crs: list of CRS names, e.g. ["EPSG:25832"]
+        bounds:      optional {e_min, e_max, n_min, n_max} for the origin
+    """
+    allowed = [str(c).upper() for c in params.get("allowed_crs", [])]
+    bounds = params.get("bounds")
+
+    # IfcMapConversion exists from IFC4 on; IFC2X3 raises on by_type
+    try:
+        conversions = model.by_type("IfcMapConversion")
+    except RuntimeError:
+        conversions = []
+
+    if not conversions:
+        site = (model.by_type("IfcSite") or [None])[0]
+        has_latlon = bool(site and site.RefLatitude and site.RefLongitude)
+        level = 20 if has_latlon else 0
+        hint = ("only IfcSite.RefLatitude/RefLongitude"
+                if has_latlon else "no georeferencing at all")
+        failing = [{"id": site.GlobalId if site else "-",
+                    "name": (site.Name if site else None) or "<IfcSite>",
+                    "reason": f"No IfcMapConversion ({hint})"}]
+        if model.schema == "IFC2X3":
+            failing[0]["reason"] += "; IFC2X3 cannot store IfcMapConversion"
+        return _result("fail", 1, 0, 1,
+                       f"LoGeoRef {level}: {hint}; IfcMapConversion to a projected CRS required",
+                       failing)
+
+    conv = conversions[0]
+    crs = conv.TargetCRS
+    crs_name = (getattr(crs, "Name", None) or "<unnamed CRS>")
+    problems = []
+    if allowed and crs_name.upper() not in allowed:
+        problems.append(f"CRS '{crs_name}' not in {params.get('allowed_crs')}")
+    if not crs.is_a("IfcProjectedCRS"):
+        problems.append(f"TargetCRS is {crs.is_a()}, not IfcProjectedCRS")
+
+    e, n, h = conv.Eastings, conv.Northings, conv.OrthogonalHeight
+    if bounds:
+        inside = (bounds["e_min"] <= e <= bounds["e_max"]
+                  and bounds["n_min"] <= n <= bounds["n_max"])
+        if not inside:
+            problems.append(f"Origin E {e:.1f} / N {n:.1f} outside the expected area")
+
+    origin = f"E {e:.1f}, N {n:.1f}, H {h:.1f}"
+    if problems:
+        return _result("fail", 1, 0, 1,
+                       f"LoGeoRef 50 but: {'; '.join(problems)}",
+                       [{"id": "-", "name": f"IfcMapConversion → {crs_name}",
+                         "reason": "; ".join(problems)}])
+    return _result("pass", 1, 1, 0,
+                   f"LoGeoRef 50: IfcMapConversion to {crs_name} ({origin})")
+
+
+def check_ids(model, params: dict, base_dir: Path | None = None) -> list[dict]:
+    """Validate the model against a buildingSMART IDS file (via IfcTester).
+
+    Each IDS specification becomes its own result, so the report shows the
+    delivery requirements one by one, exactly as written in the IDS.
+
+    Params:
+        file:            path to the .ids file (relative to the rules file)
+        filter_version:  skip specifications whose ifcVersion does not match
+                         the model schema (default true)
+    """
+    from ifctester import ids as ids_mod  # optional dependency, imported lazily
+
+    ids_path = Path(params["file"])
+    if not ids_path.is_absolute() and base_dir is not None:
+        ids_path = base_dir / ids_path
+    spec_set = ids_mod.open(str(ids_path))
+    spec_set.validate(model, should_filter_version=params.get("filter_version", True))
+
+    results = []
+    for spec in spec_set.specifications:
+        applicable = len(spec.applicable_entities)
+        failed_els = list(spec.failed_entities)
+        passed = applicable - len(failed_els)
+
+        failing = []
+        for facet in spec.requirements:
+            for f in facet.failures:
+                # FacetFailure is a TypedDict in IfcTester 0.8+
+                el = f["element"] if isinstance(f, dict) else f.element
+                reason = f["reason"] if isinstance(f, dict) else f.reason
+                failing.append({
+                    "id": getattr(el, "GlobalId", None) or f"#{el.id()}",
+                    "name": getattr(el, "Name", None) or el.is_a(),
+                    "reason": reason,
+                })
+
+        if spec.status is None:  # skipped, e.g. schema filtered out
+            res = _result("warn", 0, 0, 0,
+                          f"Skipped: IDS targets {spec.ifcVersion}, model is {model.schema}")
+        elif applicable == 0:
+            res = (_result("fail", 0, 0, 1, "Required, but no applicable elements found")
+                   if spec.minOccurs != 0 else
+                   _result("pass", 0, 0, 0, "No applicable elements (optional specification)"))
+        elif spec.status:
+            res = _result("pass", applicable, applicable, 0,
+                          f"All {applicable} applicable elements meet the requirements")
+        else:
+            res = _result("fail", applicable, passed, len(failed_els),
+                          f"{len(failed_els)}/{applicable} applicable elements fail",
+                          failing[:50])
+        res["name"] = spec.name
+        results.append(res)
+    return results
+
+
 # Helper
 def _result(status, total, passed, failed, message, failing=None):
     return {
@@ -310,7 +431,12 @@ CHECKS = {
     "unique_guids":      check_unique_guids,
     "quantity_required": check_quantity_required,
     "proxy_ratio":       check_proxy_ratio,
+    "georef":            check_georef,
+    "ids":               check_ids,
 }
+
+# Checks that read files next to the rules file get its directory as base_dir
+NEEDS_BASE_DIR = {"ids"}
 
 
 # ============================================================
@@ -334,7 +460,23 @@ def run_audit(ifc_path: str, rules_path: str) -> dict:
                 message=f"Unknown check type: {check_type}"
             ))
             continue
-        raw = check_fn(model, rule["check"])
+        if check_type in NEEDS_BASE_DIR:
+            raw = check_fn(model, rule["check"], base_dir=Path(rules_path).parent)
+        else:
+            raw = check_fn(model, rule["check"])
+
+        # A check may return several results (e.g. one per IDS specification)
+        if isinstance(raw, list):
+            for i, sub in enumerate(raw, start=1):
+                sub_name = sub.pop("name", f"#{i}")
+                results.append(CheckResult(
+                    rule_id=f"{rule['id']}.{i}",
+                    rule_name=f"{rule['name']}: {sub_name}",
+                    severity=rule["severity"],
+                    **sub,
+                ))
+            continue
+
         results.append(CheckResult(
             rule_id=rule["id"],
             rule_name=rule["name"],

@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ids xmlns="http://standards.buildingsmart.org/IDS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+    <info>
+        <title>FM basic twin - draft delivery requirements (MUC pilot)</title>
+        <version>0.1</version>
+        <description>Draft FM IDS for the Selected GIS Projects pilot with FMG. FMG_Identification.RaumID is a placeholder until FMG confirms its VisMan ID scheme.</description>
+        <date>2026-11-09</date>
+        <purpose>Quality gate before IFC deliveries enter the geo and building twin</purpose>
+    </info>
+    <specifications>
+        <specification name="Storeys have a name" ifcVersion="IFC4 IFC4X3_ADD2" description="Every storey can be found by name (Ebene)">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCBUILDINGSTOREY</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <attribute cardinality="required">
+                    <name>
+                        <simpleValue>Name</simpleValue>
+                    </name>
+                </attribute>
+            </requirements>
+        </specification>
+        <specification name="Spaces have a number and a use" ifcVersion="IFC4 IFC4X3_ADD2" description="Room number in Name, room use in LongName">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCSPACE</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <attribute cardinality="required">
+                    <name>
+                        <simpleValue>Name</simpleValue>
+                    </name>
+                </attribute>
+                <attribute cardinality="required">
+                    <name>
+                        <simpleValue>LongName</simpleValue>
+                    </name>
+                </attribute>
+            </requirements>
+        </specification>
+        <specification name="Spaces have a net floor area" ifcVersion="IFC4 IFC4X3_ADD2" description="Net floor area for FM and DIN 277 reporting">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCSPACE</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <property dataType="IFCAREAMEASURE" cardinality="required">
+                    <propertySet>
+                        <simpleValue>Qto_SpaceBaseQuantities</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>NetFloorArea</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+        <specification name="Spaces carry the FMG room ID" ifcVersion="IFC4 IFC4X3_ADD2" description="Placeholder: Raum ID that links the space to VisMan">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCSPACE</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <property dataType="IFCIDENTIFIER" cardinality="required">
+                    <propertySet>
+                        <simpleValue>FMG_Identification</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>RaumID</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+        <specification name="Doors are contained in a storey" ifcVersion="IFC4 IFC4X3_ADD2" description="Every element is assigned to a storey">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCDOOR</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <partOf relation="IFCRELCONTAINEDINSPATIALSTRUCTURE" cardinality="required">
+                    <entity>
+                        <name>
+                            <simpleValue>IFCBUILDINGSTOREY</simpleValue>
+                        </name>
+                    </entity>
+                </partOf>
+            </requirements>
+        </specification>
+        <specification name="Walls are contained in a storey" ifcVersion="IFC4 IFC4X3_ADD2" description="Every element is assigned to a storey">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCWALL</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <partOf relation="IFCRELCONTAINEDINSPATIALSTRUCTURE" cardinality="required">
+                    <entity>
+                        <name>
+                            <simpleValue>IFCBUILDINGSTOREY</simpleValue>
+                        </name>
+                    </entity>
+                </partOf>
+            </requirements>
+        </specification>
+        <specification name="Windows are contained in a storey" ifcVersion="IFC4 IFC4X3_ADD2" description="Every element is assigned to a storey">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCWINDOW</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <partOf relation="IFCRELCONTAINEDINSPATIALSTRUCTURE" cardinality="required">
+                    <entity>
+                        <name>
+                            <simpleValue>IFCBUILDINGSTOREY</simpleValue>
+                        </name>
+                    </entity>
+                </partOf>
+            </requirements>
+        </specification>
+        <specification name="Doors declare a fire rating" ifcVersion="IFC4 IFC4X3_ADD2" description="Needed by FM for fire-safety maintenance">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCDOOR</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <property dataType="IFCLABEL" cardinality="required">
+                    <propertySet>
+                        <simpleValue>Pset_DoorCommon</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>FireRating</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+    </specifications>
+</ids>

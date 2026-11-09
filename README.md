@@ -82,6 +82,26 @@ python audit.py examples/sample.ifc --rules rulesets/prefab_readiness.yaml
 
 The synthetic sample has no base quantities, so it fails the volume rules: exactly the kind of export that would break a downstream prefab check. See [`examples/prefab_readiness_report.html`](examples/prefab_readiness_report.html).
 
+### FM geo-BIM gate (IDS + georeferencing)
+
+`rulesets/fm_geobim_gate.yaml` answers: *may this IFC delivery enter a geo and building twin used by facility management?* It was drafted for a BIM-GIS pilot with Munich Airport, but works for any GIS-bound delivery.
+
+| Rule | Severity | What it validates |
+|---|---|---|
+| `schema_version` | critical | IFC4 or IFC4X3 (IFC2X3 cannot store `IfcMapConversion`) |
+| `georef` | critical | `IfcMapConversion` to an `IfcProjectedCRS` in EPSG:25832, origin inside the expected area |
+| `unique_guids` | critical | GlobalIds are unique, since they link IFC elements to the GIS model |
+| `fm_ids` | major | Every specification of the buildingSMART IDS file `rulesets/ids/fm_muc_draft.ids`, checked with IfcTester |
+
+The delivery requirements live in a standard **IDS 1.0** file, not in YAML, so the same file can go into contracts and be checked by any IDS-capable tool. Each IDS specification appears as its own row in the report. The draft IDS checks storey names, space number and use, net floor area, a room ID, containment of doors, walls and windows in a storey, and door fire rating. `FMG_Identification.RaumID` is a placeholder until the asset owner's ID scheme is confirmed.
+
+```bash
+python audit.py building.ifc --rules rulesets/fm_geobim_gate.yaml
+# ▸ 7/11 rules passed (64%) · Critical failures: 1 (georef) → exit 1
+```
+
+The `georef` check reports a simplified Level of Georeferencing: 0 (none), 20 (only `IfcSite` latitude/longitude) or 50 (`IfcMapConversion` to a projected CRS). Only 50 passes. See [`examples/fm_geobim_gate_report.html`](examples/fm_geobim_gate_report.html).
+
 ---
 
 ## Run it in 60 seconds
@@ -133,13 +153,17 @@ Exit code is `0` if all *critical* rules pass, `1` otherwise. Perfect for CI/CD 
 ├── generate_sample.py              # synthetic IFC generator (~180 lines)
 ├── rules.yaml                      # example BEP/EIR rules configuration
 ├── rulesets/
-│   └── prefab_readiness.yaml       # prefab-readiness ruleset
+│   ├── prefab_readiness.yaml       # prefab-readiness ruleset
+│   ├── fm_geobim_gate.yaml         # FM geo-BIM gate: georeferencing + IDS
+│   └── ids/
+│       └── fm_muc_draft.ids        # draft FM delivery requirements (IDS 1.0)
 ├── templates/
 │   └── report.html.j2              # Jinja2 HTML report template
 └── examples/
     ├── sample.ifc                  # synthetic test IFC (16 KB)
     ├── sample_report.html          # sample audit report output
-    └── prefab_readiness_report.html # prefab-readiness report output
+    ├── prefab_readiness_report.html # prefab-readiness report output
+    └── fm_geobim_gate_report.html  # FM geo-BIM gate report output
 ```
 
 ---
@@ -170,14 +194,16 @@ Supported `check.type` values:
 - `unique_guids` — find duplicate GlobalIds
 - `quantity_required` — verify a positive quantity exists in a `Qto_*` set (e.g. `NetVolume`)
 - `proxy_ratio` — verify generic `IfcBuildingElementProxy` elements stay below a maximum share
+- `georef` — verify `IfcMapConversion` to an allowed projected CRS (e.g. `EPSG:25832`), optionally inside bounds
+- `ids` — validate against a buildingSMART IDS file with IfcTester; one report row per IDS specification
 
-To add a new check type, write a function in `audit.py` (~15 lines) and register it in the `CHECKS` dict.
+To add a new check type, write a function in `audit.py` (~15 lines) and register it in the `CHECKS` dict. A check may return a list of results to produce several report rows, as `ids` does.
 
 ---
 
 ## Tech stack
 
-`Python 3.10+` · `ifcopenshell 0.8+` · `click` (CLI) · `Jinja2` (templating) · `PyYAML` (config) · `pydantic` (schema validation)
+`Python 3.10+` · `ifcopenshell 0.8+` · `ifctester` (IDS validation) · `click` (CLI) · `Jinja2` (templating) · `PyYAML` (config) · `pydantic` (schema validation)
 
 ---
 
